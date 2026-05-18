@@ -5,10 +5,22 @@ public class PlayerController : MonoBehaviour
     private PlayerControls controls;
     private Vector2 moveInput;
     private Rigidbody rb;
+    private CapsuleCollider cc;
     private Vector2 lookInput;
     private float xRotation = 0f;
+    private bool isRunning;
+    private bool isCrouching;
 
-    [SerializeField] float speed = 5f;
+    [Header("Movement Speed")]
+    [SerializeField] float walkSpeed = 5f;
+    [SerializeField] float runSpeed = 10f;
+    [SerializeField] float crouchSpeed = 2.5f;
+
+    [Header("Height")]
+    [SerializeField] float standingHeight = 2f;
+    [SerializeField] float crouchHeight = 1f;
+
+
     [SerializeField] Transform cameraPivot;
     [SerializeField] float sensitivity = 0.5f;
 
@@ -16,6 +28,7 @@ public class PlayerController : MonoBehaviour
     {
         controls = new PlayerControls();
         rb = GetComponent<Rigidbody>();
+        cc = GetComponent<CapsuleCollider>();
     }
 
     void Start()
@@ -39,6 +52,12 @@ public class PlayerController : MonoBehaviour
 
         controls.Player.Camera.canceled += ctx =>
             lookInput = Vector2.zero;
+
+        controls.Player.Run.performed += ctx => isRunning = true;
+        controls.Player.Run.canceled += ctx => isRunning = false;
+
+        controls.Player.Crouch.performed += ctx => isCrouching = true;
+        controls.Player.Crouch.canceled += ctx => isCrouching = false;
     }
 
     void OnDisable()
@@ -48,15 +67,6 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        // Movement logic
-        Vector3 localMove = transform.right * moveInput.x + transform.forward * moveInput.y;
-
-        rb.linearVelocity = new Vector3(
-            localMove.x * speed,
-            rb.linearVelocity.y,
-            localMove.z * speed
-        );
-
         // Camera logic
         transform.Rotate(Vector3.up * lookInput.x * sensitivity);
 
@@ -64,5 +74,37 @@ public class PlayerController : MonoBehaviour
         xRotation = Mathf.Clamp(xRotation, -80f, 80f);
 
         cameraPivot.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+    
+        UpdateCrouch();
+    }
+
+    void FixedUpdate()
+    {
+        // Movement logic
+        float currentSpeed = walkSpeed;
+
+        if (isCrouching)
+            currentSpeed = crouchSpeed;
+        else if (isRunning)
+            currentSpeed = runSpeed;
+
+        Vector3 movement = transform.forward * moveInput.y + transform.right * moveInput.x;
+        
+        rb.linearVelocity = new Vector3(
+            movement.x * currentSpeed,
+            rb.linearVelocity.y,
+            movement.z * currentSpeed
+        );
+    }
+
+    void UpdateCrouch()
+    {
+        cc.height = isCrouching ? crouchHeight : standingHeight;
+
+        Vector3 camPos = cameraPivot.localPosition;
+
+        camPos.y = isCrouching ? 0.5f : 1f;
+
+        cameraPivot.localPosition = camPos;
     }
 }
