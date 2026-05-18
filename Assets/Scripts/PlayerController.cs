@@ -10,15 +10,24 @@ public class PlayerController : MonoBehaviour
     private float xRotation = 0f;
     private bool isRunning;
     private bool isCrouching;
+    private bool jumpPressed;
+    private bool isGrounded;
+
 
     [Header("Movement Speed")]
     [SerializeField] float walkSpeed = 5f;
     [SerializeField] float runSpeed = 10f;
     [SerializeField] float crouchSpeed = 2.5f;
+    [SerializeField] float jumpForce = 7f;
 
     [Header("Height")]
     [SerializeField] float standingHeight = 2f;
     [SerializeField] float crouchHeight = 1f;
+
+    [Header("Ground check")]
+    [SerializeField] LayerMask groundLayer;
+    [SerializeField] Transform groundCheck;
+    [SerializeField] float groundCheckRadius = 0.2f;
 
 
     [SerializeField] Transform cameraPivot;
@@ -58,6 +67,8 @@ public class PlayerController : MonoBehaviour
 
         controls.Player.Crouch.performed += ctx => isCrouching = true;
         controls.Player.Crouch.canceled += ctx => isCrouching = false;
+
+        controls.Player.Jump.performed += ctx => jumpPressed = true;
     }
 
     void OnDisable()
@@ -67,6 +78,8 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
+        CheckGround();
+
         // Camera logic
         transform.Rotate(Vector3.up * lookInput.x * sensitivity);
 
@@ -95,6 +108,13 @@ public class PlayerController : MonoBehaviour
             rb.linearVelocity.y,
             movement.z * currentSpeed
         );
+
+        // Apply jump
+        if (jumpPressed && isGrounded)
+        {
+            rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+            jumpPressed = false;
+        }
     }
 
     void UpdateCrouch()
@@ -106,5 +126,14 @@ public class PlayerController : MonoBehaviour
         camPos.y = isCrouching ? 0.5f : 1f;
 
         cameraPivot.localPosition = camPos;
+    }
+
+    void CheckGround()
+    {
+        isGrounded = Physics.CheckSphere(
+            groundCheck.position,
+            groundCheckRadius,
+            groundLayer
+        );
     }
 }
