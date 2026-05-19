@@ -1,5 +1,3 @@
-using System;
-using NUnit.Framework;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
@@ -15,6 +13,8 @@ public class PlayerController : MonoBehaviour
     private bool jumpPressed;
     private bool isGrounded;
     private bool isAiming;
+    private bool isShooting;
+    private float nextFireTime;
 
 
     [Header("Movement Speed")]
@@ -37,6 +37,15 @@ public class PlayerController : MonoBehaviour
     [SerializeField] float normalFOV = 60f;
     [SerializeField] float aimFOV = 40f;
 
+    [Header("Shoot")]
+    [SerializeField] float fireRange = 100f;
+    [SerializeField] float fireRate = 0.1f;
+
+    [Header("Sound")]
+    [SerializeField] AudioSource gunAudioSource;
+    [SerializeField] AudioClip shootSound;
+
+    [Header("Extras")]
     [SerializeField] Transform cameraPivot;
     [SerializeField] float sensitivity = 0.5f;
     [SerializeField] Transform weaponHolder;
@@ -84,6 +93,8 @@ public class PlayerController : MonoBehaviour
 
         controls.Player.Aim.performed += ctx => isAiming = true;
         controls.Player.Aim.canceled += ctx => isAiming = false;
+
+        controls.Player.Shoot.performed += ctx => Shoot();
     }
 
     void OnDisable()
@@ -93,6 +104,12 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
+        if (isShooting && Time.time >= nextFireTime)
+        {
+            Shoot();
+            nextFireTime = Time.time + fireRate;
+        }
+
         CheckGround();
 
         float currentSensitivity = isAiming ? sensitivity * 0.5f : sensitivity;
@@ -154,6 +171,23 @@ public class PlayerController : MonoBehaviour
         );
 
         crosshair.SetActive(!isAiming);
+    }
+
+    void Shoot()
+    {
+        gunAudioSource.PlayOneShot(shootSound);
+        
+        Ray ray = playerCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
+
+        if (Physics.Raycast(ray, out RaycastHit hit, fireRange))
+        {
+            Target target = hit.collider.GetComponent<Target>();
+
+            if (target != null)
+            {
+                target.TakeDamage(100);
+            }
+        }
     }
 
     void UpdateCrouch()
