@@ -1,3 +1,5 @@
+using System;
+using NUnit.Framework;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
@@ -12,6 +14,7 @@ public class PlayerController : MonoBehaviour
     private bool isCrouching;
     private bool jumpPressed;
     private bool isGrounded;
+    private bool isAiming;
 
 
     [Header("Movement Speed")]
@@ -29,9 +32,18 @@ public class PlayerController : MonoBehaviour
     [SerializeField] Transform groundCheck;
     [SerializeField] float groundCheckRadius = 0.2f;
 
+    [Header("Camera")]
+    [SerializeField] Camera playerCamera;
+    [SerializeField] float normalFOV = 60f;
+    [SerializeField] float aimFOV = 40f;
 
     [SerializeField] Transform cameraPivot;
     [SerializeField] float sensitivity = 0.5f;
+    [SerializeField] Transform weaponHolder;
+    [SerializeField] Vector3 hipPosition;
+    [SerializeField] Vector3 aimPosition;
+    [SerializeField] float aimSpeed = 10f;
+    [SerializeField] GameObject crosshair;
 
     void Awake()
     {
@@ -69,6 +81,9 @@ public class PlayerController : MonoBehaviour
         controls.Player.Crouch.canceled += ctx => isCrouching = false;
 
         controls.Player.Jump.performed += ctx => jumpPressed = true;
+
+        controls.Player.Aim.performed += ctx => isAiming = true;
+        controls.Player.Aim.canceled += ctx => isAiming = false;
     }
 
     void OnDisable()
@@ -80,15 +95,18 @@ public class PlayerController : MonoBehaviour
     {
         CheckGround();
 
-        // Camera logic
-        transform.Rotate(Vector3.up * lookInput.x * sensitivity);
+        float currentSensitivity = isAiming ? sensitivity * 0.5f : sensitivity;
 
-        xRotation -= lookInput.y * sensitivity;
+        // Camera logic
+        transform.Rotate(Vector3.up * lookInput.x * currentSensitivity);
+
+        xRotation -= lookInput.y * currentSensitivity;
         xRotation = Mathf.Clamp(xRotation, -80f, 80f);
 
         cameraPivot.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
     
         UpdateCrouch();
+        HandleAim();
     }
 
     void FixedUpdate()
@@ -115,6 +133,27 @@ public class PlayerController : MonoBehaviour
             rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
             jumpPressed = false;
         }
+    }
+
+    void HandleAim()
+    {
+        Vector3 targetPos = isAiming ? aimPosition : hipPosition;
+
+        weaponHolder.localPosition = Vector3.Lerp(
+            weaponHolder.localPosition,
+            targetPos,
+            Time.deltaTime * aimSpeed
+        );
+
+        float targetFOV = isAiming ? aimFOV : normalFOV;
+
+        playerCamera.fieldOfView = Mathf.Lerp(
+            playerCamera.fieldOfView,
+            targetFOV,
+            Time.deltaTime * aimSpeed
+        );
+
+        crosshair.SetActive(!isAiming);
     }
 
     void UpdateCrouch()
