@@ -86,8 +86,7 @@ public class PlayerController : MonoBehaviour
         controls.Player.Run.performed += ctx => isRunning = true;
         controls.Player.Run.canceled += ctx => isRunning = false;
 
-        controls.Player.Crouch.performed += ctx => isCrouching = true;
-        controls.Player.Crouch.canceled += ctx => isCrouching = false;
+        controls.Player.Crouch.performed += ctx => ToggleCrouch();
 
         controls.Player.Jump.performed += ctx => jumpPressed = true;
 
@@ -175,8 +174,9 @@ public class PlayerController : MonoBehaviour
 
     void Shoot()
     {
+        gunAudioSource.pitch = Random.Range(0.95f, 1.05f);
         gunAudioSource.PlayOneShot(shootSound);
-        
+
         Ray ray = playerCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
 
         if (Physics.Raycast(ray, out RaycastHit hit, fireRange))
@@ -188,6 +188,11 @@ public class PlayerController : MonoBehaviour
                 target.TakeDamage(100);
             }
         }
+    }
+
+    void ToggleCrouch()
+    {
+        isCrouching = !isCrouching;
     }
 
     void UpdateCrouch()
